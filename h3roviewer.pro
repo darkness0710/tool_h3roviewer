@@ -18,7 +18,7 @@ win32-msvc* {
 
 RC_ICONS = resources/images/main/icon.ico
 
-VERSION = 1.2.6.0
+VERSION = 1.3.0.0
 QMAKE_TARGET_DESCRIPTION = Heroes 3 HotA Hero Viewewr
 
 # You can make your code fail to compile if it uses deprecated APIs.
@@ -52,6 +52,7 @@ SOURCES += \
     src/main.cpp \
     src/mainwindow.cpp \
     src/memoryscanner.cpp \
+    src/offsetscanner.cpp \
     src/providercollection.cpp \
     src/settingswindow.cpp
 
@@ -83,6 +84,7 @@ HEADERS += \
     src/imagesMap.h \
     src/mainwindow.h \
     src/memoryscanner.h \
+    src/offsetscanner.h \
     src/providercollection.h \
     src/settingswindow.h
 

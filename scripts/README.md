@@ -9,11 +9,16 @@ H3roViewer đọc dữ liệu hero bằng cách bám vào một số địa ch�
 
 | Nhóm | Trỏ vào | Có bị đổi khi HotA update? |
 |---|---|---|
-| `HOTA_DLL_TO_HERO_SECTION_POINTER_OFFSET` | `hota.dll` | **Có — gần như mỗi bản** |
+| `HOTA_DLL_TO_HERO_SECTION_POINTER_FALLBACK` | `hota.dll` | **Có — gần như mỗi bản** |
 | `HOTA_EXE_TO_INIT_OFFSET`, `SOD_EXE_TO_INIT_OFFSET`, `EXE_TO_STATUS_OFFSET`, `EXE_TO_BATTLE_RESULT_OFFSET` | `h3hota.exe` / `Heroes3.exe` | Không — HotA không build lại exe (file vẫn là bản 2023) |
 
 Mỗi bản HotA đều build lại `hota.dll`, `.data` nở ra, nên RVA của con trỏ tới
 mảng hero dịch chỗ.
+
+**Từ bản này trở đi app tự dò lấy giá trị đó lúc chạy** (`src/offsetscanner.cpp`),
+nên HotA update không còn bắt buộc phải build lại. Hằng số trong
+`memoryscanner.cpp` chỉ còn là giá trị dự phòng — xem mục
+"[Tự dò lúc chạy](#tự-dò-lúc-chạy)" bên dưới.
 
 **Quan trọng:** offset gắn với **build của `hota.dll`**, không gắn với version
 string của HotA. HD Mod ship bản `hota.dll` riêng (xem `_HD3_Data/HotA.dll_*fix`)
@@ -32,6 +37,35 @@ Lấy timestamp bằng chính script (dòng `PE timestamp` trong output).
 | 1.8.1 | `0x6A99ADE7` | `0x6463D4` |
 
 Script `find_hota_offsets.py` dò lại giá trị này tự động thay vì phải RE tay.
+
+## Tự dò lúc chạy
+
+`src/offsetscanner.cpp` (`HeroPointerLocator`) chạy đúng thuật toán của script
+này, nhưng đọc `hota.dll` **đã map trong process game** thay vì file trên đĩa.
+`MemoryScanner::updateGameAddresses()` gọi nó mỗi giây.
+
+Khác biệt quan trọng so với script offline: sau khi chọn ứng viên, nó **follow
+con trỏ và kiểm tra dữ liệu thật** — đọc 16 hero đầu mảng rồi đối chiếu
+`heroID == index`, tên hero in được, `color` trong `0..7` hoặc `0xFF`. Chỉ khi
+đạt mới coi là "confirmed". Nhờ vậy heuristic "10 sites / 1 stores" của script
+được xác nhận bằng dữ liệu chứ không phải chỉ đoán.
+
+Thứ tự ưu tiên trong `resolve()`:
+
+1. Giá trị đã cache trong `QSettings`, key theo **PE timestamp + SizeOfImage**
+   của `hota.dll` — đổi DLL (kể cả HD Mod swap bản khác) là cache tự miss.
+2. Ứng viên tốt nhất mà signature scan tìm được.
+3. `HOTA_DLL_TO_HERO_SECTION_POINTER_FALLBACK` trong `memoryscanner.cpp`.
+
+Mảng hero chưa tồn tại khi còn ở main menu, nên bước xác nhận được thử lại mỗi
+giây cho tới khi vào map. Trong lúc chưa confirm, app vẫn dùng giá trị scan được
+(bước 2), tức đã đúng cho bản `hota.dll` đang chạy.
+
+Trong `Settings` có ô **Game memory** hiển thị trạng thái và nút
+**Detect hero data offset again** — nút này xoá cache rồi dò lại từ đầu. Bình
+thường không cần bấm; chỉ dùng khi nghi việc tự dò chốt nhầm giá trị.
+
+Log ghi bằng `qInfo`, xem được khi bật debug messages trong cửa sổ About.
 
 ## Chạy như thế nào
 
@@ -113,15 +147,25 @@ Tra theo triệu chứng:
 
 ### 1. App attach được, hiện màu player, nhưng hero trống / sai bét
 
-Đây là ca thường gặp nhất sau khi update HotA (~95%).
+Đây là ca thường gặp nhất sau khi update HotA (~95%), và giờ app phải tự xử lý
+được. Kiểm tra theo thứ tự:
 
-- **Sửa:** `src/memoryscanner.cpp` → `HOTA_DLL_TO_HERO_SECTION_POINTER_OFFSET`
-- **Cách:** chạy `python scripts/find_hota_offsets.py --game-dir <...> --patch`, rồi build lại.
+- Mở `Settings` → `Game memory`. Nếu ghi **auto detected** thì offset không phải
+  nguyên nhân, xem tiếp ca 4.
+- Nếu ghi **not confirmed**: vào một map rồi xem lại. Vẫn không confirm nghĩa là
+  các invariant xác nhận trong `HeroPointerLocator::confirmCandidate()` không còn
+  đúng — sang ca 2 và 3.
+- Bấm **Detect hero data offset again** nếu nghi cache giữ giá trị sai.
+- **Chỉ khi tự dò không được:** `src/memoryscanner.cpp` →
+  `HOTA_DLL_TO_HERO_SECTION_POINTER_FALLBACK`, chạy
+  `python scripts/find_hota_offsets.py --game-dir <...> --patch`, rồi build lại.
 
 ### 2. Script báo `No candidate found`
 
 Nghĩa là `sizeof(BaseHeroStruct)` đã khác 1170 — HotA thêm field vào struct hero.
-Phải làm cả hai:
+Đây là ca **duy nhất mà tự dò lúc chạy không cứu được**: `HeroPointerLocator` lấy
+stride từ chính `sizeof(BaseHeroStruct)`, nên sửa struct là nó tự đúng lại, nhưng
+sửa struct thì bắt buộc build lại. Phải làm cả hai:
 
 - **Sửa:** `src/gamestructs.h` → `BaseHeroStruct` (điều chỉnh `padding*` cho khớp size mới)
 - **Sửa:** `scripts/find_hota_offsets.py` → `HERO_STRUCT_SIZE`

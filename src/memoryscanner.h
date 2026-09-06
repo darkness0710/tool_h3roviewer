@@ -8,6 +8,7 @@
 #include <QTimer>
 
 #include "gamestructs.h"
+#include "offsetscanner.h"
 
 class MemoryScanner : public QObject
 {
@@ -25,6 +26,13 @@ public:
     static PlayerStruct *player;
     static GameStateStruct *gameState;
 
+public slots:
+    /**
+     * @brief rescanMemoryOffsets Throws away the cached hota.dll hero pointer
+     * offset and detects it again from scratch. Only needed if the automatic
+     * detection settled on the wrong value; it happens on its own otherwise.
+     */
+    void rescanMemoryOffsets();
 
 private slots:
     /**
@@ -128,6 +136,12 @@ private:
      */
     void clearBuffers();
 
+    /**
+     * @brief publishOffsetStatus Emits offsetStatusChanged(), but only when the
+     * text actually changed, as this runs once a second.
+     */
+    void publishOffsetStatus(const QString &status);
+
     /** * * * * * * * * * *
      *  Member variables  *
      ** * * * * * * * * * */
@@ -140,10 +154,19 @@ private:
     HeroStructs heroBuffer;
     PlayerStruct playerBuffer;
 
+    HeroPointerLocator heroPointerLocator;
+    QString lastOffsetStatus;
+
     wchar_t const *exeName;
 signals:
     void playerUpdated();
     void heroUpdated();
+
+    /**
+     * @brief offsetStatusChanged Reports whether the hero pointer offset is
+     * auto detected and confirmed, so the settings window can show it.
+     */
+    void offsetStatusChanged(const QString &status);
 };
 
 #endif // MEMORYSCANNER_H

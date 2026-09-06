@@ -18,6 +18,19 @@ If the process is named differently, it will not work.
 As soon as a game is active, the selected hero should appear in the main window.  
 Right click in the GUI to bring up the menu.
 
+### HotA updates
+
+Every HotA release rebuilds `hota.dll` and moves the memory location this app
+reads the hero data from, which used to mean waiting for a new build after every
+HotA update. This fork finds that location by itself: it scans the running game,
+verifies the result against the hero data it points at, and remembers it per
+`hota.dll` build, so HD Mod shipping its own DLL is handled too.
+
+Nothing to configure. `Settings` → `Game memory` shows what it found, and has a
+button to detect it again if it ever settles on the wrong value. If the offset
+stays unconfirmed after loading a map, HotA probably changed the hero struct
+layout, which does need a new build — see `scripts/README.md`.
+
 
 
 ## BUILDING

@@ -22,7 +22,11 @@ constexpr uint32_t SOD_PLAYERS_TO_HEROES_OFFSET = 0xB50;
 
 constexpr uint32_t HOTA_EXE_TO_INIT_OFFSET = 0x97F4;
 constexpr uint32_t HOTA_INIT_TO_PLAYER_POINTER_OFFSET = 0x00;
-constexpr uint32_t HOTA_DLL_TO_HERO_SECTION_POINTER_OFFSET = 0x6463CC;
+
+// Only a fallback. Every HotA release rebuilds hota.dll and moves this offset,
+// so HeroPointerLocator detects it from the running game instead. This value is
+// used until that succeeds, and forever if it cannot.
+constexpr uint32_t HOTA_DLL_TO_HERO_SECTION_POINTER_FALLBACK = 0x6463CC;
 
 constexpr uint32_t EXE_TO_BATTLE_RESULT_OFFSET = 0x294DAC;
 constexpr uint32_t EXE_TO_STATUS_OFFSET = 0x2992B8;
@@ -315,6 +319,7 @@ void MemoryScanner::updateGameAddresses()
 {
     if(this->gameStateBuffer.processHandler == 0)
     {
+        publishOffsetStatus(tr("The game is not running."));
         return;
     }
     this->gameStateBuffer.h3BaseAddress = GetModuleBaseAddress(this->gameStateBuffer.HommPID,
@@ -350,6 +355,9 @@ void MemoryScanner::updateGameAddresses()
         // In SoD, after the player section is the Hero section, containing
         // info of all heroes.
         this->gameStateBuffer.heroSectionAddress = addr + SOD_PLAYERS_TO_HEROES_OFFSET;
+
+        // Heroes3.exe is not rebuilt, so nothing has to be detected here.
+        publishOffsetStatus(tr("Shadow of Death uses fixed offsets, nothing to detect."));
     }
     else
     {
@@ -357,11 +365,45 @@ void MemoryScanner::updateGameAddresses()
         // section and hero section.
         this->gameStateBuffer.initStructAddress = getPointerValue(this->gameStateBuffer.h3BaseAddress + HOTA_EXE_TO_INIT_OFFSET);
 
+        // The offset to the hero section pointer moves with every hota.dll
+        // build, so it is detected from the running game. Until a map is loaded
+        // there is nothing to confirm a candidate against, which is why this
+        // runs on the gameAddressUpdateTimer rather than once on attach.
+        const uint32_t heroPointerOffset =
+                this->heroPointerLocator.resolve(this->gameStateBuffer.processHandler,
+                                                 this->gameStateBuffer.dllBaseAddress,
+                                                 HOTA_DLL_TO_HERO_SECTION_POINTER_FALLBACK);
+
         // Folows the pointer to the hero section
         this->gameStateBuffer.heroSectionAddress = getPointerValue(this->gameStateBuffer.dllBaseAddress +
-                                                                   HOTA_DLL_TO_HERO_SECTION_POINTER_OFFSET);
+                                                                   heroPointerOffset);
 
+        publishOffsetStatus(this->heroPointerLocator.isConfirmed()
+                            ? tr("Hero data offset 0x%1, auto detected for hota.dll build %2.")
+                              .arg(heroPointerOffset, 0, 16)
+                              .arg(this->heroPointerLocator.moduleIdentity())
+                            : tr("Hero data offset 0x%1, not confirmed yet. Load a map to let it "
+                                 "detect the offset for this hota.dll build.")
+                              .arg(heroPointerOffset, 0, 16));
     }
+}
+
+void MemoryScanner::publishOffsetStatus(const QString &status)
+{
+    if (status == this->lastOffsetStatus)
+    {
+        return;
+    }
+    this->lastOffsetStatus = status;
+    emit offsetStatusChanged(status);
+}
+
+void MemoryScanner::rescanMemoryOffsets()
+{
+    qInfo() << "Detecting the hota.dll hero pointer offset again on request.";
+    this->heroPointerLocator.forgetCachedOffset();
+    publishOffsetStatus(tr("Detecting the hero data offset..."));
+    updateGameAddresses();
 }
 
 bool MemoryScanner::findActivePlayer()

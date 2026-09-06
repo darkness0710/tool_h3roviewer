@@ -141,6 +141,8 @@ void MainWindow::connectEvents()
     connect(&(this->settings), &SettingsWindow::hideTimeUpdated, this, &MainWindow::setGUIHideTime);
     connect(&(this->settings), &SettingsWindow::interactionAutoHideUpdated, this, &MainWindow::enableInteractionAutoHide);
     connect(&(this->settings), &SettingsWindow::newDayAutoHideUpdated, this, &MainWindow::enableNewDayAutoHide);
+    connect(&(this->settings), &SettingsWindow::redetectOffsetsRequested, &this->scanner, &MemoryScanner::rescanMemoryOffsets);
+    connect(&this->scanner, &MemoryScanner::offsetStatusChanged, &this->settings, &SettingsWindow::setOffsetStatus);
 
     connect(&(this->editUI), &EditUIWindow::saveUiPressed, this, &MainWindow::saveUI);
     connect(&(this->editUI), &EditUIWindow::importFile, this, &MainWindow::importUiFile);

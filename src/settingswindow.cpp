@@ -10,6 +10,7 @@ SettingsWindow::SettingsWindow(QWidget *parent) :
     connect(ui->timeHiddenSlider, &QSlider::valueChanged, this, &SettingsWindow::hideTimeSliderChanged);
     connect(ui->enableInteractionAutoHideBox, &QCheckBox::clicked, this, &SettingsWindow::enableInteractionAutoHideClicked);
     connect(ui->enableNewDayAutoHideBox, &QCheckBox::clicked, this, &SettingsWindow::enableNewDayAutoHideClicked);
+    connect(ui->redetectOffsetsButton, &QPushButton::clicked, this, &SettingsWindow::redetectOffsetsRequested);
 }
 
 SettingsWindow::~SettingsWindow()
@@ -44,4 +45,9 @@ void SettingsWindow::enableNewDayAutoHideClicked(const bool enabled)
 {
     ui->enableNewDayAutoHideBox->setChecked(enabled);
     emit newDayAutoHideUpdated(enabled);
+}
+
+void SettingsWindow::setOffsetStatus(const QString &status)
+{
+    ui->offsetStatusLabel->setText(status);
 }

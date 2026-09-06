@@ -7,13 +7,13 @@
     <x>0</x>
     <y>0</y>
     <width>447</width>
-    <height>193</height>
+    <height>296</height>
    </rect>
   </property>
   <property name="windowTitle">
    <string>Settings</string>
   </property>
-  <layout class="QVBoxLayout" name="verticalLayout" stretch="10,1">
+  <layout class="QVBoxLayout" name="verticalLayout" stretch="10,4,1">
    <item>
     <widget class="QGroupBox" name="groupBox">
      <property name="title">
@@ -74,6 +74,35 @@
         </property>
         <property name="checked">
          <bool>true</bool>
+        </property>
+       </widget>
+      </item>
+     </layout>
+    </widget>
+   </item>
+   <item>
+    <widget class="QGroupBox" name="memoryGroupBox">
+     <property name="title">
+      <string>Game memory</string>
+     </property>
+     <layout class="QVBoxLayout" name="verticalLayout_3">
+      <item>
+       <widget class="QLabel" name="offsetStatusLabel">
+        <property name="text">
+         <string>The game is not running.</string>
+        </property>
+        <property name="wordWrap">
+         <bool>true</bool>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <widget class="QPushButton" name="redetectOffsetsButton">
+        <property name="toolTip">
+         <string>H3roViewer finds the hero data offset by itself every time HotA changes hota.dll. Use this only if it settled on a wrong value: it forgets what it found and looks again.</string>
+        </property>
+        <property name="text">
+         <string>Detect hero data offset again</string>
         </property>
        </widget>
       </item>

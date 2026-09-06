@@ -3,10 +3,15 @@
 Re-detect the hardcoded game memory offsets used by H3roViewer.
 
 Every HotA release rebuilds hota.dll, which shifts the RVA of the hero array
-base pointer and breaks HOTA_DLL_TO_HERO_SECTION_POINTER_OFFSET in
-src/memoryscanner.cpp. This script finds the new value by signature scanning
-instead of by manual reverse engineering, and sanity-checks the offsets that
-point into h3hota.exe as well.
+base pointer. H3roViewer now finds that RVA by itself at runtime (see
+src/offsetscanner.cpp), so a HotA update no longer needs a new build. This
+script runs the same signature scan offline, which is still worth doing to:
+
+  * refresh HOTA_DLL_TO_HERO_SECTION_POINTER_FALLBACK, the value the app falls
+    back to before it has confirmed one against the running game,
+  * cross-check that src/gamestructs.h still matches the hero struct, which is
+    the one thing runtime detection cannot repair,
+  * diagnose an install where the app reports the offset as unconfirmed.
 
     python scripts/find_hota_offsets.py                     # auto-locate the game
     python scripts/find_hota_offsets.py --game-dir "D:/HotA"
@@ -28,7 +33,7 @@ from collections import Counter
 # --------------------------------------------------------------------------
 
 SOURCE_FILE = os.path.join("src", "memoryscanner.cpp")
-CONSTANT_NAME = "HOTA_DLL_TO_HERO_SECTION_POINTER_OFFSET"
+CONSTANT_NAME = "HOTA_DLL_TO_HERO_SECTION_POINTER_FALLBACK"
 
 # sizeof(BaseHeroStruct) - the stride used to index the hero array.
 HERO_STRUCT_SIZE = 1170                      # 0x492
@@ -335,8 +340,15 @@ def patch_source(repo_root, new_value, version, timestamp):
     label = ("%s/%08X" % (version or "unknown", timestamp)).encode("ascii", "replace")
     entry = b"  " + label + (b": 0x%X" % new_value)
     match = HISTORY_RE.search(blob)
-    if match and entry.strip() not in match.group(1):
-        blob = blob[:match.end(1)] + entry + blob[match.end(1):]
+    if match:
+        if entry.strip() not in match.group(1):
+            blob = blob[:match.end(1)] + entry + blob[match.end(1):]
+    else:
+        # The history lives in the table in scripts/README.md, so say so rather
+        # than quietly dropping the entry.
+        print("  No history comment in %s - add this row to scripts/README.md:"
+              % SOURCE_FILE)
+        print("    | %s | 0x%08X | 0x%X |" % (version or "unknown", timestamp, new_value))
 
     with open(path, "wb") as handle:
         handle.write(blob)
