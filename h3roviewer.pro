@@ -18,7 +18,7 @@ win32-msvc* {
 
 RC_ICONS = resources/images/main/icon.ico
 
-VERSION = 1.3.0.0
+VERSION = 1.3.0.1
 QMAKE_TARGET_DESCRIPTION = Heroes 3 HotA Hero Viewewr
 
 # You can make your code fail to compile if it uses deprecated APIs.

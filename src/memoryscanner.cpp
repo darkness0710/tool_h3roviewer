@@ -26,7 +26,7 @@ constexpr uint32_t HOTA_INIT_TO_PLAYER_POINTER_OFFSET = 0x00;
 // Only a fallback. Every HotA release rebuilds hota.dll and moves this offset,
 // so HeroPointerLocator detects it from the running game instead. This value is
 // used until that succeeds, and forever if it cannot.
-constexpr uint32_t HOTA_DLL_TO_HERO_SECTION_POINTER_FALLBACK = 0x6463CC;
+constexpr uint32_t HOTA_DLL_TO_HERO_SECTION_POINTER_FALLBACK = 0x6463D4;
 
 constexpr uint32_t EXE_TO_BATTLE_RESULT_OFFSET = 0x294DAC;
 constexpr uint32_t EXE_TO_STATUS_OFFSET = 0x2992B8;
